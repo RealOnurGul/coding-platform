@@ -11,12 +11,12 @@ const register = async (req, res, next) => {
 
     // Check if user already exists
     const userExists = await pool.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email]
+      'SELECT * FROM users WHERE email = $1 OR username = $2',
+      [email, username]
     );
 
     if (userExists.rows.length > 0) {
-      throw new AppError('User already exists', 400);
+      throw new AppError('User already exists with this email or username', 400);
     }
 
     // Hash password
@@ -37,17 +37,13 @@ const register = async (req, res, next) => {
     });
 
     res.status(201).json({
-      status: 'success',
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-        },
-        token,
-      },
+      token,
+      username: user.username,
+      email: user.email,
+      id: user.id
     });
   } catch (error) {
+    console.error('Registration error:', error);
     next(error);
   }
 };
@@ -81,17 +77,13 @@ const login = async (req, res, next) => {
     });
 
     res.json({
-      status: 'success',
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-        },
-        token,
-      },
+      token,
+      username: user.username,
+      email: user.email,
+      id: user.id
     });
   } catch (error) {
+    console.error('Login error:', error);
     next(error);
   }
 };
@@ -101,7 +93,6 @@ const logout = async (req, res, next) => {
     // In a real application, you might want to invalidate the token
     // or implement a token blacklist
     res.json({
-      status: 'success',
       message: 'Logged out successfully',
     });
   } catch (error) {

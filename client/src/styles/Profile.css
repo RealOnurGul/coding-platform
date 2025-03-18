@@ -1,0 +1,130 @@
+.profile-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.profile-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.profile-header h1 {
+  color: var(--text-color);
+  margin-bottom: 1rem;
+}
+
+.user-info {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-info h2 {
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+.user-info p {
+  color: #6b7280;
+}
+
+.skills-section, .achievements-section {
+  margin-bottom: 3rem;
+}
+
+.skills-section h2, .achievements-section h2 {
+  color: var(--text-color);
+  margin-bottom: 1.5rem;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.skill-card {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.skill-card h3 {
+  color: var(--text-color);
+  margin-bottom: 1rem;
+}
+
+.skill-progress {
+  position: relative;
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  position: absolute;
+  right: 0;
+  top: -20px;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.skill-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.skill-stats p {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.practice-btn {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.practice-btn:hover {
+  background-color: var(--primary-color-dark);
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.achievement-card {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.achievement-card h3 {
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+.achievement-card p {
+  color: #6b7280;
+  font-size: 0.875rem;
+} 
