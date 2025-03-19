@@ -1,73 +1,126 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import authService from '../services/authService';
 import '../styles/Auth.css';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
-
+  
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Clear error when user starts typing
+    setErrorMessage('');
+  };
+  
+  const validateForm = () => {
+    // Check for empty fields
+    if (!formData.email.trim()) {
+      setErrorMessage('Email is required');
+      return false;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setErrorMessage('Please enter a valid email address');
+      return false;
+    }
+    
+    if (!formData.password) {
+      setErrorMessage('Password is required');
+      return false;
+    }
+    
+    return true;
+  };
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage('');
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+    
+    setIsLoading(true);
+    
     try {
-      const response = await fetch('http://localhost:5001/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
-
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('userName', data.username);
-      navigate('/profile');
-    } catch (err) {
-      setError(err.message);
+      await authService.login(formData);
+      
+      // Notify other components of authentication state change
+      window.dispatchEvent(new Event('authStateChanged'));
+      
+      // Redirect to dashboard
+      navigate('/dashboard');
+    } catch (error) {
+      setErrorMessage(error.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
     }
   };
-
+  
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Login</h2>
-        {error && <div className="error-message">{error}</div>}
-        <form onSubmit={handleSubmit}>
+        <h1>Log In</h1>
+        
+        {errorMessage && (
+          <div className="error-message">{errorMessage}</div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
               type="email"
               id="email"
-              className="form-control"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
               required
+              placeholder="Your email address"
+              autoComplete="email"
             />
           </div>
+          
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input
               type="password"
               id="password"
-              className="form-control"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
               required
-              minLength={6}
+              placeholder="Your password"
+              autoComplete="current-password"
             />
           </div>
-          <button type="submit" className="btn btn-primary">
-            Login
+          
+          <button 
+            type="submit" 
+            className={`auth-button ${isLoading ? 'loading' : ''}`}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Logging In...' : 'Log In'}
           </button>
         </form>
-
-        <div className="auth-link">
-          Don't have an account? <a href="/register">Register</a>
+        
+        <div className="auth-links">
+          <p>
+            Don't have an account? <Link to="/register">Sign Up</Link>
+          </p>
+          <Link to="/forgot-password" className="forgot-password">
+            Forgot Password?
+          </Link>
         </div>
       </div>
     </div>

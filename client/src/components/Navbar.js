@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import '../styles/Navbar.css';
 
 const Navbar = () => {
@@ -7,8 +7,10 @@ const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
+    // Check token on mount and path change
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
 
@@ -20,10 +22,11 @@ const Navbar = () => {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [location.pathname]); // Re-check when path changes
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userName');
     setIsLoggedIn(false);
     setShowProfileMenu(false);
     navigate('/login');
@@ -32,6 +35,9 @@ const Navbar = () => {
   const toggleProfileMenu = () => {
     setShowProfileMenu(!showProfileMenu);
   };
+
+  // Display username initial or default
+  const userInitial = localStorage.getItem('userName')?.[0]?.toUpperCase() || 'U';
 
   return (
     <nav className="navbar">
@@ -44,7 +50,7 @@ const Navbar = () => {
             <div className="profile-menu" ref={profileMenuRef}>
               <button className="profile-button" onClick={toggleProfileMenu}>
                 <div className="profile-avatar">
-                  {localStorage.getItem('userName')?.[0]?.toUpperCase() || 'U'}
+                  {userInitial}
                 </div>
               </button>
               {showProfileMenu && (

@@ -1,88 +1,144 @@
-const { pool } = require('../config/database');
-const { AppError } = require('../middleware/errorHandler');
+const ErrorResponse = require('../utils/errorResponse');
+const asyncHandler = require('../middleware/async');
 
-const getProblems = async (req, res, next) => {
-  try {
-    const { difficulty, topic } = req.query;
-    let query = 'SELECT * FROM problems';
-    const params = [];
-    let paramCount = 1;
-
-    if (difficulty || topic) {
-      query += ' WHERE';
-      if (difficulty) {
-        query += ` difficulty = $${paramCount}`;
-        params.push(difficulty);
-        paramCount++;
+// Mock problems data for demonstration
+const problems = [
+  {
+    id: 1,
+    title: 'Two Sum',
+    description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.',
+    difficulty: 'easy',
+    topic: 'arrays',
+    examples: [
+      {
+        input: 'nums = [2,7,11,15], target = 9',
+        output: '[0,1]',
+        explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].'
       }
-      if (topic) {
-        if (difficulty) query += ' AND';
-        query += ` topic = $${paramCount}`;
-        params.push(topic);
+    ]
+  },
+  {
+    id: 2,
+    title: 'Valid Parentheses',
+    description: 'Given a string s containing just the characters (,),{,},[ and ], determine if the input string is valid.',
+    difficulty: 'easy',
+    topic: 'strings',
+    examples: [
+      {
+        input: 's = "()"',
+        output: 'true'
+      },
+      {
+        input: 's = "()[]{}"',
+        output: 'true'
       }
-    }
-
-    const result = await pool.query(query, params);
-
-    res.json({
-      status: 'success',
-      data: result.rows,
-    });
-  } catch (error) {
-    next(error);
+    ]
+  },
+  {
+    id: 3,
+    title: 'Maximum Subarray',
+    description: 'Given an integer array nums, find the contiguous subarray (containing at least one number) which has the largest sum and return its sum.',
+    difficulty: 'medium',
+    topic: 'dynamic-programming',
+    examples: [
+      {
+        input: 'nums = [-2,1,-3,4,-1,2,1,-5,4]',
+        output: '6',
+        explanation: '[4,-1,2,1] has the largest sum = 6.'
+      }
+    ]
   }
-};
+];
 
-const getProblemById = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query('SELECT * FROM problems WHERE id = $1', [id]);
+/**
+ * @desc    Get all problems with optional filtering
+ * @route   GET /api/problems
+ * @access  Private
+ */
+const getProblems = asyncHandler(async (req, res, next) => {
+  const { difficulty, topic } = req.query;
+  let filteredProblems = [...problems];
 
-    if (result.rows.length === 0) {
-      throw new AppError('Problem not found', 404);
-    }
-
-    res.json({
-      status: 'success',
-      data: result.rows[0],
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const submitSolution = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { solution } = req.body;
-    const userId = req.user?.id;
-
-    if (!userId) {
-      throw new AppError('User not authenticated', 401);
-    }
-
-    // Here you would typically:
-    // 1. Validate the solution
-    // 2. Run the solution against test cases
-    // 3. Store the submission
-    // 4. Update user progress
-
-    // For now, we'll just store the submission
-    const result = await pool.query(
-      `INSERT INTO submissions (user_id, problem_id, solution, status)
-       VALUES ($1, $2, $3, 'submitted')
-       RETURNING *`,
-      [userId, id, solution]
+  // Apply filters if provided
+  if (difficulty) {
+    filteredProblems = filteredProblems.filter(problem => 
+      problem.difficulty === difficulty
     );
-
-    res.json({
-      status: 'success',
-      data: result.rows[0],
-    });
-  } catch (error) {
-    next(error);
   }
-};
+  
+  if (topic) {
+    filteredProblems = filteredProblems.filter(problem => 
+      problem.topic === topic
+    );
+  }
+
+  res.status(200).json({
+    success: true,
+    count: filteredProblems.length,
+    data: filteredProblems
+  });
+});
+
+/**
+ * @desc    Get a problem by ID
+ * @route   GET /api/problems/:id
+ * @access  Private
+ */
+const getProblemById = asyncHandler(async (req, res, next) => {
+  const id = parseInt(req.params.id);
+  const problem = problems.find(p => p.id === id);
+
+  if (!problem) {
+    return next(new ErrorResponse(`Problem not found with id of ${id}`, 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: problem
+  });
+});
+
+/**
+ * @desc    Submit a solution for a problem
+ * @route   POST /api/problems/:id/submit
+ * @access  Private
+ */
+const submitSolution = asyncHandler(async (req, res, next) => {
+  const id = parseInt(req.params.id);
+  const { solution } = req.body;
+  const userId = req.user.id;
+
+  // Check if problem exists
+  const problem = problems.find(p => p.id === id);
+  if (!problem) {
+    return next(new ErrorResponse(`Problem not found with id of ${id}`, 404));
+  }
+
+  // Simulate solution verification (in a real app, this would run tests)
+  const isCorrect = solution && solution.length > 0;
+  
+  // Simulate saving submission to database
+  const submission = {
+    id: Date.now(),
+    userId,
+    problemId: id,
+    solution,
+    status: isCorrect ? 'accepted' : 'wrong-answer',
+    createdAt: new Date().toISOString()
+  };
+
+  res.status(200).json({
+    success: true,
+    data: {
+      submission,
+      result: {
+        status: submission.status,
+        runtime: '5ms',
+        memory: '39.8MB'
+      }
+    }
+  });
+});
 
 module.exports = {
   getProblems,

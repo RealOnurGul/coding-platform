@@ -1,112 +1,123 @@
-const { pool } = require('../config/database');
-const { AppError } = require('../middleware/errorHandler');
+const { User, UserPreference, UserStats, Theme } = require('../models/User');
+const ErrorResponse = require('../utils/errorResponse');
+const asyncHandler = require('../middleware/async');
 
-const getUserProfile = async (req, res, next) => {
-  try {
-    const userId = req.user?.id;
-
-    const result = await pool.query(
-      'SELECT id, email, username, created_at FROM users WHERE id = $1',
-      [userId]
-    );
-
-    if (result.rows.length === 0) {
-      throw new AppError('User not found', 404);
-    }
-
-    res.json({
-      status: 'success',
-      data: result.rows[0],
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const updateUserProfile = async (req, res, next) => {
-  try {
-    const userId = req.user?.id;
-    const { username, email } = req.body;
-
-    // Check if email is already taken by another user
-    if (email) {
-      const emailCheck = await pool.query(
-        'SELECT id FROM users WHERE email = $1 AND id != $2',
-        [email, userId]
-      );
-
-      if (emailCheck.rows.length > 0) {
-        throw new AppError('Email already in use', 400);
+/**
+ * @desc    Get user profile
+ * @route   GET /api/users/profile
+ * @access  Private
+ */
+const getUserProfile = asyncHandler(async (req, res, next) => {
+  const user = await User.findByPk(req.user.id, {
+    include: [
+      { model: UserPreference, as: 'preferences' },
+      { model: UserStats, as: 'stats' },
+      { 
+        model: Theme, 
+        as: 'themes',
+        through: { attributes: [] }
       }
-    }
+    ]
+  });
 
-    const result = await pool.query(
-      `UPDATE users 
-       SET username = COALESCE($1, username),
-           email = COALESCE($2, email),
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3
-       RETURNING id, username, email, created_at, updated_at`,
-      [username, email, userId]
-    );
-
-    if (result.rows.length === 0) {
-      throw new AppError('User not found', 404);
-    }
-
-    res.json({
-      status: 'success',
-      data: result.rows[0],
-    });
-  } catch (error) {
-    next(error);
+  if (!user) {
+    return next(new ErrorResponse('User not found', 404));
   }
-};
 
-const getUserProgress = async (req, res, next) => {
-  try {
-    const userId = req.user?.id;
+  // Format user data for response
+  const userData = {
+    ...user.toJSON(),
+    themes: user.themes ? user.themes.map(theme => theme.name) : []
+  };
 
-    // Get user's solved problems count
-    const solvedCount = await pool.query(
-      `SELECT COUNT(*) as count 
-       FROM submissions 
-       WHERE user_id = $1 AND status = 'accepted'`,
-      [userId]
-    );
+  res.status(200).json({
+    success: true,
+    data: userData
+  });
+});
 
-    // Get user's progress by difficulty
-    const progressByDifficulty = await pool.query(
-      `SELECT p.difficulty, COUNT(*) as solved
-       FROM submissions s
-       JOIN problems p ON s.problem_id = p.id
-       WHERE s.user_id = $1 AND s.status = 'accepted'
-       GROUP BY p.difficulty`,
-      [userId]
-    );
+/**
+ * @desc    Update user profile
+ * @route   PATCH /api/users/profile
+ * @access  Private
+ */
+const updateUserProfile = asyncHandler(async (req, res, next) => {
+  const { name, bio, avatarColor } = req.body;
+  
+  const fieldsToUpdate = {
+    name: name,
+    bio: bio,
+    avatarColor: avatarColor
+  };
 
-    // Get user's progress by topic
-    const progressByTopic = await pool.query(
-      `SELECT p.topic, COUNT(*) as solved
-       FROM submissions s
-       JOIN problems p ON s.problem_id = p.id
-       WHERE s.user_id = $1 AND s.status = 'accepted'
-       GROUP BY p.topic`,
-      [userId]
-    );
+  // Remove undefined fields
+  Object.keys(fieldsToUpdate).forEach(key => 
+    fieldsToUpdate[key] === undefined && delete fieldsToUpdate[key]
+  );
 
-    res.json({
-      status: 'success',
-      data: {
-        totalSolved: parseInt(solvedCount.rows[0].count),
-        progressByDifficulty: progressByDifficulty.rows,
-        progressByTopic: progressByTopic.rows,
+  const user = await User.findByPk(req.user.id);
+  
+  if (!user) {
+    return next(new ErrorResponse('User not found', 404));
+  }
+  
+  // Update user fields
+  Object.assign(user, fieldsToUpdate);
+  await user.save();
+
+  // Get complete user with related data
+  const updatedUser = await User.findByPk(req.user.id, {
+    include: [
+      { model: UserPreference, as: 'preferences' },
+      { model: UserStats, as: 'stats' },
+      { 
+        model: Theme, 
+        as: 'themes',
+        through: { attributes: [] }
+      }
+    ]
+  });
+
+  // Format user data for response
+  const userData = {
+    ...updatedUser.toJSON(),
+    themes: updatedUser.themes ? updatedUser.themes.map(theme => theme.name) : []
+  };
+
+  res.status(200).json({
+    success: true,
+    data: userData
+  });
+});
+
+/**
+ * @desc    Get user progress
+ * @route   GET /api/users/progress
+ * @access  Private
+ */
+const getUserProgress = asyncHandler(async (req, res, next) => {
+  const userStats = await UserStats.findOne({
+    where: { userId: req.user.id }
+  });
+
+  if (!userStats) {
+    return next(new ErrorResponse('User stats not found', 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      totalSolved: userStats.totalProblemsSolved || 0,
+      progressByDifficulty: {
+        easy: userStats.easyProblemsSolved || 0,
+        medium: userStats.mediumProblemsSolved || 0,
+        hard: userStats.hardProblemsSolved || 0
       },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+      streak: userStats.maxStreak || 0,
+      activeDays: userStats.activeDays || 0
+    }
+  });
+});
 
 module.exports = {
   getUserProfile,

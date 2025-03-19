@@ -1,16 +1,16 @@
 const express = require('express');
-const { authenticateToken } = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const { getProblems, getProblemById, submitSolution } = require('../controllers/problemController');
 
 const router = express.Router();
 
 // Get all problems (with optional filtering)
-router.get('/', authenticateToken, getProblems);
+router.get('/', protect, getProblems);
 
 // Get a specific problem by ID
-router.get('/:id', authenticateToken, getProblemById);
+router.get('/:id', protect, getProblemById);
 
 // Submit a solution
-router.post('/:id/submit', authenticateToken, submitSolution);
+router.post('/:id/submit', protect, submitSolution);
 
 module.exports = router; 
